@@ -48,3 +48,36 @@ setx EDITOR "C:\path\to\tiny-prompt-edit.exe"
 ```
 
 Then restart the terminal and use `Ctrl+G` in Codex CLI.
+
+## PowerShell
+
+Add this to your PowerShell profile (`notepad $PROFILE`) to use `Ctrl+G` on the current command line:
+
+```powershell
+Set-PSReadLineKeyHandler -Chord Ctrl+g -ScriptBlock {
+    $line = ""
+    $cursor = 0
+
+    [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState(
+        [ref]$line,
+        [ref]$cursor
+    )
+
+    $tmp = [System.IO.Path]::GetTempFileName()
+    [System.IO.File]::WriteAllText($tmp, $line)
+
+    Start-Process `
+        -FilePath "C:\path\to\tiny-prompt-edit.exe" `
+        -ArgumentList "`"$tmp`"" `
+        -Wait
+
+    $newLine = [System.IO.File]::ReadAllText($tmp)
+    Remove-Item $tmp -Force
+
+    [Microsoft.PowerShell.PSConsoleReadLine]::Replace(
+        0,
+        $line.Length,
+        $newLine
+    )
+}
+```
