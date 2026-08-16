@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>tiny-prompt-edit</AssemblyName>
+    <RootNamespace>TinyPromptEdit</RootNamespace>
+    <ApplicationIcon>tiny-prompt-edit.ico</ApplicationIcon>
+  </PropertyGroup>
+</Project>
