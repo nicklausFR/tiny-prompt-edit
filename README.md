@@ -81,3 +81,22 @@ Set-PSReadLineKeyHandler -Chord Ctrl+g -ScriptBlock {
     )
 }
 ```
+
+## Windows context menu
+
+Tiny Prompt Edit can be added to the Windows file context menu so any file can be opened directly with it.
+
+Create a file such as `tiny-prompt-edit-context-menu.reg`, replace the executable path, then double-click the file to import it into the Registry:
+
+```reg
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\Classes\*\shell\TinyPromptEdit]
+@="Open with Tiny Prompt Edit"
+"Icon"="C:\\PATH\\TO\\tiny-prompt-edit.exe"
+
+[HKEY_CURRENT_USER\Software\Classes\*\shell\TinyPromptEdit\command]
+@="\"C:\\PATH\\TO\\tiny-prompt-edit.exe\" \"%1\""
+```
+
+This adds **Open with Tiny Prompt Edit** to the context menu for all files. No administrator rights are required because the entry is stored under `HKEY_CURRENT_USER`.
