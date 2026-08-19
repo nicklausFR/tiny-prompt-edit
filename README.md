@@ -100,3 +100,9 @@ Windows Registry Editor Version 5.00
 ```
 
 This adds **Open with Tiny Prompt Edit** to the context menu for all files. No administrator rights are required because the entry is stored under `HKEY_CURRENT_USER`.
+
+## License
+
+Copyright (C) 2026 nicklausFR
+
+GPL-3.0-or-later. See [LICENSE](LICENSE).
