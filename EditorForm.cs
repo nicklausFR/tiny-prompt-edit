@@ -6,13 +6,17 @@ namespace TinyPromptEdit;
 
 public sealed class EditorForm : Form
 {
-    private readonly RichTextBox editor = new();
+    private readonly TextBoxBase editor;
     private readonly LineNumberPanel lineNumbers;
     private readonly string configPath;
     private readonly System.Windows.Forms.Timer configReloadTimer = new() { Interval = 250 };
     private FileSystemWatcher? configWatcher;
     private string? filePath;
     private bool darkMode;
+    private bool showScrollBars = true;
+    private bool configuredShowLineNumbers;
+    private bool configuredWordWrap = true;
+    private int largeFileThresholdMb = 2;
     private Localization localization;
 
     private int borderSize;
@@ -49,8 +53,15 @@ public sealed class EditorForm : Form
         minFontSize = Math.Max(1, cfg.GetInt("editor", "min_font_size", 6));
         maxFontSize = Math.Max(minFontSize, cfg.GetInt("editor", "max_font_size", 40));
         zoomModifier = cfg.Get("editor", "zoom_modifier", "Control");
-        bool showLineNumbers = cfg.GetBool("editor", "show_line_numbers", false);
+        configuredShowLineNumbers = cfg.GetBool("editor", "show_line_numbers", false);
+        showScrollBars = cfg.GetBool("editor", "show_scrollbars", true);
+        configuredWordWrap = cfg.GetBool("editor", "word_wrap", true);
+        largeFileThresholdMb = Math.Max(0, cfg.GetInt("editor", "large_file_threshold_mb", 2));
         ParseShortcuts(cfg.Get("editor", "close_shortcuts", "Control+X, Escape"));
+
+        editor = IsLargeFile()
+            ? new TextBox { Multiline = true, MaxLength = int.MaxValue }
+            : new RichTextBox();
 
         Text = GetWindowTitle();
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -78,8 +89,27 @@ public sealed class EditorForm : Form
         editor.ForeColor = fg;
         editor.Font = new Font(fontName, fontSize);
         editor.AcceptsTab = true;
-        editor.WordWrap = true;
-        editor.DetectUrls = false;
+        editor.WordWrap = configuredWordWrap && !IsLargeFile();
+        // Keep native scrolling enabled even when only its visual scrollbar is hidden.
+        if (editor is RichTextBox richEditor)
+        {
+            richEditor.ScrollBars = RichTextBoxScrollBars.Vertical;
+            richEditor.DetectUrls = false;
+        }
+        else if (editor is TextBox plainEditor)
+        {
+            plainEditor.ScrollBars = ScrollBars.Vertical;
+        }
+        editor.HandleCreated += (_, _) =>
+        {
+            ApplyEditorNativeTheme();
+            ApplyScrollbarVisibility();
+        };
+        editor.TextChanged += (_, _) =>
+        {
+            if (editor.IsHandleCreated)
+                editor.BeginInvoke((Action)ApplyScrollbarVisibility);
+        };
 
         lineNumbers = new LineNumberPanel(editor)
         {
@@ -87,7 +117,7 @@ public sealed class EditorForm : Form
             BackColor = gutter,
             ForeColor = gutterText,
             Font = editor.Font,
-            Visible = showLineNumbers
+            Visible = configuredShowLineNumbers && !IsLargeFile()
         };
 
         Controls.Add(editor);
@@ -111,6 +141,8 @@ public sealed class EditorForm : Form
         Shown += (_, _) =>
         {
             ApplyTitleBarTheme();
+            ApplyScrollbarVisibility();
+            lineNumbers.RefreshNumbers();
             editor.Focus();
             editor.SelectionStart = editor.TextLength;
         };
@@ -181,6 +213,7 @@ public sealed class EditorForm : Form
         }
 
         ApplyTitleBarTheme();
+        ApplyEditorNativeTheme();
         Invalidate(true);
     }
 
@@ -203,6 +236,34 @@ public sealed class EditorForm : Form
         int attribute,
         ref int attributeValue,
         int attributeSize);
+
+    private void ApplyEditorNativeTheme()
+    {
+        if (!editor.IsHandleCreated || !OperatingSystem.IsWindows())
+            return;
+
+        SetWindowTheme(editor.Handle, darkMode ? "DarkMode_Explorer" : "Explorer", null);
+        editor.Invalidate(true);
+    }
+
+    [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+    private static extern int SetWindowTheme(
+        IntPtr windowHandle,
+        string? subApplicationName,
+        string? subIdList);
+
+    private void ApplyScrollbarVisibility()
+    {
+        if (!editor.IsHandleCreated)
+            return;
+
+        const int verticalScrollBar = 1;
+        ShowScrollBar(editor.Handle, verticalScrollBar, showScrollBars);
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowScrollBar(IntPtr windowHandle, int scrollBar, bool show);
 
     private void StartConfigWatcher()
     {
@@ -283,6 +344,10 @@ public sealed class EditorForm : Form
         maxFontSize = Math.Max(minFontSize, cfg.GetInt("editor", "max_font_size", maxFontSize));
         newFontSize = Math.Clamp(newFontSize, minFontSize, maxFontSize);
         zoomModifier = cfg.Get("editor", "zoom_modifier", zoomModifier);
+        configuredWordWrap = cfg.GetBool("editor", "word_wrap", configuredWordWrap);
+        largeFileThresholdMb = Math.Max(0,
+            cfg.GetInt("editor", "large_file_threshold_mb", largeFileThresholdMb));
+        editor.WordWrap = configuredWordWrap && !IsLargeFile();
 
         try
         {
@@ -297,12 +362,32 @@ public sealed class EditorForm : Form
             // Keep the current font if the configured font cannot be created.
         }
 
-        lineNumbers.Visible = cfg.GetBool("editor", "show_line_numbers", lineNumbers.Visible);
+        configuredShowLineNumbers = cfg.GetBool("editor", "show_line_numbers",
+            configuredShowLineNumbers);
+        lineNumbers.Visible = configuredShowLineNumbers && !IsLargeFile();
+        showScrollBars = cfg.GetBool("editor", "show_scrollbars", showScrollBars);
+        ApplyScrollbarVisibility();
         lineNumbers.RefreshNumbers();
 
         closeShortcuts.Clear();
         ParseShortcuts(cfg.Get("editor", "close_shortcuts", "Control+X, Escape"));
         editor.Focus();
+    }
+
+    private bool IsLargeFile()
+    {
+        if (largeFileThresholdMb <= 0 || string.IsNullOrWhiteSpace(filePath))
+            return false;
+
+        try
+        {
+            long thresholdBytes = largeFileThresholdMb * 1024L * 1024L;
+            return new FileInfo(filePath).Length >= thresholdBytes;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
     private ContextMenuStrip CreateContextMenu()
@@ -343,11 +428,14 @@ public sealed class EditorForm : Form
             if (input.TextLength == 0)
                 return;
 
-            RichTextBoxFinds options = matchCase.Checked ? RichTextBoxFinds.MatchCase : RichTextBoxFinds.None;
+            StringComparison comparison = matchCase.Checked
+                ? StringComparison.CurrentCulture
+                : StringComparison.CurrentCultureIgnoreCase;
             int start = editor.SelectionStart + editor.SelectionLength;
-            int found = editor.Find(input.Text, start, options);
+            string content = editor.Text;
+            int found = content.IndexOf(input.Text, start, comparison);
             if (found < 0 && start > 0)
-                found = editor.Find(input.Text, 0, options);
+                found = content.IndexOf(input.Text, 0, comparison);
 
             if (found >= 0)
             {
@@ -595,41 +683,60 @@ public sealed class EditorForm : Form
 
     private sealed class LineNumberPanel : Control
     {
-        private readonly RichTextBox editor;
+        private readonly TextBoxBase editor;
 
-        public LineNumberPanel(RichTextBox editor)
+        public LineNumberPanel(TextBoxBase editor)
         {
             this.editor = editor;
             DoubleBuffered = true;
             Width = 42;
             editor.TextChanged += (_, _) => RefreshNumbers();
-            editor.SelectionChanged += (_, _) => Invalidate();
-            editor.VScroll += (_, _) => Invalidate();
-            editor.Resize += (_, _) => Invalidate();
+            if (editor is RichTextBox richEditor)
+            {
+                richEditor.SelectionChanged += (_, _) => RefreshIfVisible();
+                richEditor.VScroll += (_, _) => RefreshIfVisible();
+            }
+            editor.Resize += (_, _) => RefreshIfVisible();
+        }
+
+        private void RefreshIfVisible()
+        {
+            if (Visible)
+                Invalidate();
         }
 
         public void RefreshNumbers()
         {
-            int digits = Math.Max(1, editor.Lines.Length).ToString().Length;
+            if (!Visible)
+                return;
+
+            int digits = GetLineCount().ToString().Length;
             Width = Math.Max(36, TextRenderer.MeasureText(new string('0', digits), Font).Width + 14);
             Invalidate();
         }
+
+        private int GetLineCount() => editor.TextLength == 0
+            ? 1
+            : editor.GetLineFromCharIndex(editor.TextLength) + 1;
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
             int firstChar = editor.GetCharIndexFromPosition(new Point(1, 1));
             int firstLine = Math.Max(0, editor.GetLineFromCharIndex(firstChar));
-            int lineCount = Math.Max(1, editor.Lines.Length);
+            int lastVisibleChar = editor.GetCharIndexFromPosition(
+                new Point(Math.Max(1, editor.ClientSize.Width - 2),
+                    Math.Max(1, editor.ClientSize.Height - 2)));
+            int lastVisibleLine = editor.GetLineFromCharIndex(lastVisibleChar) + 1;
 
-            for (int line = firstLine; line < lineCount; line++)
+            for (int line = firstLine; line <= lastVisibleLine; line++)
             {
                 int charIndex = editor.GetFirstCharIndexFromLine(line);
                 if (charIndex < 0)
                     break;
                 int y = editor.GetPositionFromCharIndex(charIndex).Y;
-                if (y > Height)
-                    break;
+                if (y < -Font.Height || y > Height)
+                    continue;
 
                 TextRenderer.DrawText(e.Graphics, (line + 1).ToString(), Font,
                     new Rectangle(0, y, Width - 7, Font.Height + 3), ForeColor,

@@ -197,6 +197,47 @@ try {
         Write-Host "Added the default language setting to $installedConfigPath"
     }
 
+    if ($configContent -notmatch '(?im)^\s*show_scrollbars\s*=') {
+        if ($configContent -match '(?im)^\s*\[editor\]\s*$') {
+            $configContent = [regex]::Replace(
+                $configContent,
+                '(?im)^\s*\[editor\]\s*$',
+                '$0' + [Environment]::NewLine + 'show_scrollbars = true',
+                1)
+        }
+        else {
+            $configContent += [Environment]::NewLine + '[editor]' +
+                [Environment]::NewLine + 'show_scrollbars = true' + [Environment]::NewLine
+        }
+
+        [System.IO.File]::WriteAllText(
+            $installedConfigPath,
+            $configContent,
+            [System.Text.UTF8Encoding]::new($true))
+        Write-Host "Added the default scrollbar setting to $installedConfigPath"
+    }
+
+    $editorDefaults = @(
+        [pscustomobject]@{ Name = 'word_wrap'; Value = 'true' },
+        [pscustomobject]@{ Name = 'large_file_threshold_mb'; Value = '2' }
+    )
+    foreach ($setting in $editorDefaults) {
+        if ($configContent -match ('(?im)^\s*' + [regex]::Escape($setting.Name) + '\s*=')) {
+            continue
+        }
+
+        $configContent = [regex]::Replace(
+            $configContent,
+            '(?im)^\s*\[editor\]\s*$',
+            '$0' + [Environment]::NewLine + $setting.Name + ' = ' + $setting.Value,
+            1)
+        [System.IO.File]::WriteAllText(
+            $installedConfigPath,
+            $configContent,
+            [System.Text.UTF8Encoding]::new($true))
+        Write-Host "Added $($setting.Name) to $installedConfigPath"
+    }
+
     & $menuScriptPath -ExecutablePath $installedExePath
 
     if (-not $SkipPowerShellIntegration) {

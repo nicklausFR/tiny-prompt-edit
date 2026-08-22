@@ -21,6 +21,8 @@ files. It integrates with tools such as Codex CLI, but is not limited to them.
 - Configurable font and zoom
 - Live configuration reload after saving `tiny-prompt-edit.ini`
 - Optional line numbers
+- Optional vertical scrollbar display without disabling mouse-wheel or keyboard scrolling
+- Lightweight plain-text engine for large files
 - Configurable close shortcuts
 - Editor context menu: search, save, open with, settings and close
 - Opens empty without arguments
@@ -55,6 +57,9 @@ zoom_modifier = Control
 min_font_size = 6
 max_font_size = 40
 show_line_numbers = false
+show_scrollbars = true
+word_wrap = true
+large_file_threshold_mb = 2
 close_shortcuts = Control+X, Escape
 ```
 
@@ -62,6 +67,15 @@ English is the source and default interface language. Set `language = fr` to loa
 French gettext catalog from `locales/fr.po`. Language changes are applied when the INI is saved,
 just like the other live settings. Additional translations can be added as PO files using the
 same English `msgid` values.
+
+Setting `show_scrollbars = false` hides only the scrollbar itself. Scrolling remains available
+with the mouse wheel, arrow keys, and `Page Up` / `Page Down`.
+
+When a file reaches `large_file_threshold_mb`, Tiny Prompt Edit switches from `RichTextBox` to the
+lighter native multiline text control. Word wrapping and the line-number gutter are disabled in
+this mode, while editing, search, save, zoom, mouse-wheel, and keyboard scrolling remain available.
+Their configured values still apply to smaller files. Set the threshold to `0` to disable this
+protection.
 
 ## Codex CLI
 
