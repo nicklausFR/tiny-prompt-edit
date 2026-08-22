@@ -1,0 +1,49 @@
+msgid ""
+msgstr ""
+"Language: fr\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Could not open file"
+msgstr "Impossible d'ouvrir le fichier"
+
+msgid "Search..."
+msgstr "Rechercher…"
+
+msgid "Save"
+msgstr "Sauvegarder"
+
+msgid "Open with..."
+msgstr "Ouvrir avec…"
+
+msgid "Settings..."
+msgstr "Paramétrer…"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "Search"
+msgstr "Rechercher"
+
+msgid "Next"
+msgstr "Suivant"
+
+msgid "Match case"
+msgstr "Respecter la casse"
+
+msgid "New file.txt"
+msgstr "Nouveau fichier.txt"
+
+msgid "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+msgstr "Fichiers texte (*.txt)|*.txt|Tous les fichiers (*.*)|*.*"
+
+msgid "Could not save"
+msgstr "Impossible de sauvegarder"
+
+msgid "Could not show Open with"
+msgstr "Impossible d'afficher « Ouvrir avec »"
+
+msgid "Could not open settings"
+msgstr "Impossible d'ouvrir les paramètres"
+
+msgid "New file name"
+msgstr "Nom du nouveau fichier"

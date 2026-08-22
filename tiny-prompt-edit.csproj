@@ -9,4 +9,14 @@
     <RootNamespace>TinyPromptEdit</RootNamespace>
     <ApplicationIcon>tiny-prompt-edit.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <None Update="tiny-prompt-edit.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <None Update="locales\**\*.po">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
 </Project>
